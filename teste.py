@@ -1,1 +1,0 @@
-print("Iniciado a transmissão dos arquivos" + "\n" + "aa")
