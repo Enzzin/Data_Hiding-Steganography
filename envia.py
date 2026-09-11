@@ -1,6 +1,8 @@
 import socket
 import struct
 import os
+import sys
+import time
 
 FORMATO = "!BBHHH"
 
@@ -89,11 +91,24 @@ def envia_pacote(sock, byte_alterado: int, seq_icmp: int) -> None:
 
     sock.sento(pacote, (DESTINO, 0))
 
-with socket.socket(socket.AF_INET, socket.SOCK_RAW, socket.IPPROTO_ICMP) as s:
-    s.bind((ORIGEM, 0))
+#Caminho do arquivo que vai ser enviado, passado direto na CLI
+#se tiver passado
+if len (sys.argv) > 1:
+    caminho_arq = sys.argv[1]
+else:
+    caminho_arq="teste.png"
 
-    for sequence, payload_oculto in enumerate(pacotes_enviados, start=1):
-        print("Payload alterado (repr):", repr(payload_oculto))
-        print("Payload original (hex):", mensagem.hex())
-        pacote = cria_icmp(bytearray(payload_oculto), sequence)
-        s.sendto(pacote, (DESTINO, 0))
+#rb abre e raw binary sem codificação de texto assim que os bytes sejam tratados corretamente
+with open(caminho_arq, "rb") as f:
+    dados_arq = f.read()
+
+tamanho_arq = len(dados_arq)
+
+#pegando a extensao do arquivo e removendo o .
+extensao = os.path.splitext(caminho_arq)[1].lstrip(".")
+
+MAPA_EXTENSAO = {
+    0x0: "bin", 0x1: "jpg", "png": 0x2, #Colocar mais depois
+}
+
+codigo_extensao = MAPA_EXTENSAO.get(extensao.lower(), 0x0) #padrao binario
