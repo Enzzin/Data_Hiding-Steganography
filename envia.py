@@ -11,6 +11,7 @@ FORMATO = "!BBHHH"
 #Controles de debug para teste durante o desenvolvimento
 DEBUG = 1 #Debug do codigo prints que só aparecem quando DEBUG for igual a 1
 ENVIAR = 0 #para somente fins de teste local sem o socket implementado completamente uso 0 quando tiver completamente pronto e testes finais uso 1 
+DEBUG_CHATO = 1 #Debug que fica poluindo a cli, ex: envio de cada pacote sendo mostrado
 
 MAGIC_NIBBLE = 0x0B #Numero magico para bytes de controle
 
@@ -161,12 +162,55 @@ with socket.socket(socket.AF_INET, socket.SOCK_RAW, socket.IPPROTO_ICMP) as s:
     #Enviando o segundo Start e definindo a extensão do arquivo parecida com a de cima mas com a diferença da extensao e nao o tamanho 
     byte_ext = monta_byte_controle(CMD_START, SUB_EXTENSAO)
     #Substitui os bits do 7 ao 4 com os gerados pela função de montar byte e os bits 3 ao 0 com o codigo da extensão do arquivo
-    byte_ctrl = (byte_ctrl & 0xF0) | (codigo_extensao & 0x0F)
+    byte_ext = (byte_ext & 0xF0) | (codigo_extensao & 0x0F)
     qnt_pacotes += 1
     if DEBUG == 1:
-        print(f"Byte Controle extensão {qnt_pacotes}: {byte_ctrl}")
+        print(f"Byte Controle extensão {qnt_pacotes}: {byte_ext}")
     if ENVIAR == 1:
-        envia_pacote(s, byte_ctrl, qnt_pacotes)
+        envia_pacote(s, byte_ext, qnt_pacotes)
     time.sleep(PAUSA_ENTRE_PACOTES)
 
     print(f"Extensao {extensao} enviada como código 0x{codigo_extensao:x}")
+
+    #Enviando o arquivo propiamente dito
+    print(f"\nEnviando {tamanho_arq} bytes do arquivo")
+
+    #criando a variavel de sequencia que começa em 0 
+    seq_bit = 0
+    debug_pacote_alto = 0
+    debug_pacote_baixo = 0
+
+    #iterando sobre todos os bytes do arquivo lido e enviando eles nibble a nibble
+    for indice_byte, byte_arquivo in enumerate(dados_arq):
+        #pegando os 4 bits mais significativos do 7 ao 4 e movendo eles para o lugar dos bits 3 ao 0 "Limpando o cemeço"
+        nibble_alto = (byte_arquivo >> 4) & 0X0F
+        #Usando a função ja criada para montar o pacote de dados
+        byte_high = monta_byte_dados(seq_bit, PART_HIGH, nibble_alto)
+        qnt_pacotes += 1
+        debug_pacote_alto += 1
+        if DEBUG_CHATO == 1:
+            print(f"Pacote {debug_pacote_alto} nibble alto enviado com sucesso: {byte_high}")
+        if ENVIAR == 1:
+            envia_pacote(s, byte_high, qnt_pacotes)
+        time.sleep(PAUSA_ENTRE_PACOTES)
+
+        #igual o de cima mas para os nibbles mais baixos
+        #pegando limpando o começo para manter só os bits 3 ao 0 nao tem que mover porque eles ja estão na posição correta
+        nibble_baixo = byte_arquivo & 0x0F
+        #Usando a função ja criada para montar o pacote de dados
+        byte_low = monta_byte_dados(seq_bit, PART_LOW, nibble_baixo)
+
+        qnt_pacotes += 1
+        debug_pacote_baixo += 1
+        if DEBUG_CHATO == 1:
+            print(f"Pacote {debug_pacote_baixo} nibble baixo enviado com sucesso: {byte_low}")
+        if ENVIAR == 1:
+            envia_pacote(s, byte_low, qnt_pacotes)
+        time.sleep(PAUSA_ENTRE_PACOTES)
+
+        #Usando um XOR para quando tiver em 1 mudar para 0 e quando tiver em 0 mudar para 1
+        seq_bit ^= 1 
+
+
+
+        
