@@ -11,7 +11,7 @@ FORMATO = "!BBHHH"
 #Controles de debug para teste durante o desenvolvimento
 DEBUG = 1 #Debug do codigo prints que só aparecem quando DEBUG for igual a 1
 ENVIAR = 0 #para somente fins de teste local sem o socket implementado completamente uso 0 quando tiver completamente pronto e testes finais uso 1 
-DEBUG_CHATO = 1 #Debug que fica poluindo a cli, ex: envio de cada pacote sendo mostrado
+DEBUG_CHATO = 0#Debug que fica poluindo a cli, ex: envio de cada pacote sendo mostrado
 
 MAGIC_NIBBLE = 0x0B #Numero magico para bytes de controle
 
@@ -180,6 +180,9 @@ with socket.socket(socket.AF_INET, socket.SOCK_RAW, socket.IPPROTO_ICMP) as s:
     debug_pacote_alto = 0
     debug_pacote_baixo = 0
 
+    #Calculando para os prints de progresso
+    passo_10_porcento = max(1, tamanho_arq // 10)
+
     #iterando sobre todos os bytes do arquivo lido e enviando eles nibble a nibble
     for indice_byte, byte_arquivo in enumerate(dados_arq):
         #pegando os 4 bits mais significativos do 7 ao 4 e movendo eles para o lugar dos bits 3 ao 0 "Limpando o cemeço"
@@ -211,6 +214,23 @@ with socket.socket(socket.AF_INET, socket.SOCK_RAW, socket.IPPROTO_ICMP) as s:
         #Usando um XOR para quando tiver em 1 mudar para 0 e quando tiver em 0 mudar para 1
         seq_bit ^= 1 
 
+        #Prints de progresso a cada 10%
+        bytes_enviados = indice_byte + 1
+        fim = (bytes_enviados == tamanho_arq)
+
+        #Prinrt do envio a cada 10%
+        if (bytes_enviados % passo_10_porcento == 0) or fim:
+            porcentagem = (bytes_enviados/ tamanho_arq) * 100
+            print (f"{bytes_enviados}/{tamanho_arq} bytes enviados: {porcentagem:.2f}% já enviados")
+
+    print("Etapa final: Enviando o comando de fim de transmissão para o recebe.py")
+
+    byte_end = monta_byte_controle (CMD_END, 0)
+    qnt_pacotes += 1
+    envia_pacote(s, byte_end, qnt_pacotes)
+
+    print("Pacote de fim enviado com sucesso")
+    print("Transmissão concluida")
 
 
         
