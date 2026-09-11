@@ -8,6 +8,8 @@ FORMATO = "!BBHHH"
 
 #Definindo as variaveis globais
 
+DEBUG = 1
+
 MAGIC_NIBBLE = 0x0B #Numero magico para bytes de controle
 
 # Bit 7: pacote é de DADOS ou de CONTROLE
@@ -112,3 +114,41 @@ MAPA_EXTENSAO = {
 }
 
 codigo_extensao = MAPA_EXTENSAO.get(extensao.lower(), 0x0) #padrao binario
+
+print("Iniciado a transmissão dos arquivos")
+print(f"Arquivo: {caminho_arq}")
+print(f"Tamanho: {tamanho_arq} bytes")
+print(f"Extensão: {extensao} (código: 0x{codigo_extensao:X})")
+print(f"Destino:   {DESTINO}")
+print(f"{tamanho_arq * 2} pacotes DADOS")
+
+#Contador de pacotes enviados
+qnt_pacotes = 0 
+
+#Inicio real da comunicação
+with socket.socket(socket.AF_INET, socket.SOCK_RAW, socket.IPPROTO_ICMP) as s:
+    s.bind((ORIGEM, 0))
+
+    print("\nIniciando a primeira parte do envio dos dados, enviado START e matados")
+
+    #Para caber arquivos maiores até 16mb ao invez de passar somente em 2 nibbles o tamanho do arquivo será passado 6 nibbles para compor o tamanho do arquivo
+    nibbles_tamanho = []
+    temp_tam = tamanho_arq
+    for i in range(6):
+        #pegando só os 4 mais baixos e movendo para o lado para depois pegar os outros
+        nibbles_tamanho.append(temp_tam & 0x0F)
+        temp_tam >>= 4
+    nibbles_tamanho.reverse() #inverte os bits para ficar certo
+    if DEBUG == 1:
+        print(f"nibbles tamanho: {nibbles_tamanho}")
+
+    #Envindo o primeiro byte de controle de tamanho
+    for nibble_tam in nibbles_tamanho:
+        byte_ctrl = monta_byte_controle(CMD_START, SUB_TAMANHO)
+        #Substitui os bits do 7 ao 4 com os gerados pela função de montar byte e os bits 3 ao 0 com o nibble do tamanho
+        byte_ctrl = (byte_ctrl & 0xF0) | (nibble_tam & 0x0F)
+        qnt_pacotes += 1
+        if DEBUG == 1:
+            print(f"Byte Controle tamanho {qnt_pacotes}: {byte_ctrl}")
+        envia_pacote(s, byte_ctrl, qnt_pacotes)
+        time.sleep(PAUSA_ENTRE_PACOTES)
