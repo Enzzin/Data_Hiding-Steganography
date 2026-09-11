@@ -1,0 +1,7 @@
+Prototipo
+7 - controle se for 0 está lenvando parte da imagem e se for 1 está levando controle para o script
+6 - se o 7 for 0 está levando a sequencia alternando entr 1 e 0 para garantir a sequencia e se o 7 for 1 o 6 esta levando inicio ou fim 
+5 - se o 7 for 0 está levando qual a parte do byte (nibble) se o bit 5 for 0 esta levando os bits 7 a 4 e se for 1 está levando os bits 3 a 0
+se o 7 for 1  ele é um sub controle indicando o seguinte se for 0 informa o tamanho do arquivo e se for 1 indica o formato do aquivo o que vem depois do .
+4- se o bit 7 (controle for 0) ele serve para paridade ou seja vai verificar se os bits restantes 3 ao 0 são par ou impar e se for par ele é 0 e se for impar ele é 1 assim conseguimos detectar erros de transmissão ou qualquer perda de pacotes, se o bit 7 for 1 ele serve somente como uma verificação extra de que aquilo é realmente um comando então quando o contexto ou o bit 7 for 1 ele será sempre 1
+3,2,1 e 0 - quando o controle de contexto(bit 7) for 0 ele está levando dados do que está sendo transmitido e quando for 1 ele leva o numero magico para diferenciar pacotes normais de rede dos de controle
