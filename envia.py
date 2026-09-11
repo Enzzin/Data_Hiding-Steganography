@@ -4,49 +4,46 @@ import os
 
 FORMATO = "!BBHHH"
 
-MAGIC_NUMBER   = "NM"
-COMANDO_INICIO = "NM Juta"
-COMANDO_FIM    = "NM Afta"
+#Definindo as variaveis globais
+
+MAGIC_NIBBLE = 0x0B #Numero magico para bytes de controle
+
+# Bit 7: pacote é de DADOS ou de CONTROLE
+CTX_DATA = 0  # Pacote de dados 
+CTX_CTRL = 1  # Pacote de controle
+
+# Bit 6: comando de stat ou stop
+CMD_START = 0 # comando inicio
+CMD_END = 1 # comando fim
+
+# Bit 5: nibble
+PART_HIGH = 0 #Nibble alto
+PART_LOW = 1 #Nibble baixo
+
+# Bit 5: Controle
+SUB_TAMANHO = 0 # Tamanho do arquivo
+SUB_EXTENSAO = 0 # Extensão do arquivo
 
 #Colocar quando eu criar os containers
-ORIGEM  = "10.0.1.3"
-DESTINO = "10.0.1.2"
+ORIGEM  = "127.0.0.1"
+DESTINO = "127.0.0.1"
 
-mensagens_escondidas = [
-    "Nada",
-    "NM Juta",
-    "NM oi",
-    "oi sem",
-    "NM Afta",
-    "NM MACACO"
-]
 
 mensagem = (
     b"\b\t\n\v\f\r\016\017\020\021\022\023\024\025\026\027\030\031\032\033\034\035\036\037 !\"#$%&'()*+,-./01234567"
 )
+#Evitar Congestinamento (Menu para selecionar)
+PAUSA_ENTRE_PACOTES = 0.005
 
-capacidade_por_pacote = len(mensagem) // 4
+#Montar pacotes de dados
+def monta_byte_dados():
+    byte_montado = 0
+    return byte_montado
 
-pacotes_enviados = []
-
-for msg in mensagens_escondidas:
-    frase_bytes = msg.encode("utf-8")
-
-    if len(frase_bytes) > capacidade_por_pacote:
-        print("Mensagem grande demais por pacote")
-        continue
-
-    mensagem_oculta = bytearray(mensagem)
-
-    for indice, byte_frase in enumerate(frase_bytes):
-        inicio = indice * 4
-        for word in range(4):
-            bits = byte_frase & 0b11
-            mensagem_oculta[inicio + word] &= 0b11111100
-            mensagem_oculta[inicio + word] |= bits
-            byte_frase >>= 2
-
-    pacotes_enviados.append(bytes(mensagem_oculta))
+# Motar pacotes de controle
+def monta_byte_controle():
+    byte_montado = 0
+    return byte_montado
 
 def cria_icmp(payload: bytearray, sequence: int) -> bytearray:
     tipo = 8 
