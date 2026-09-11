@@ -8,7 +8,9 @@ FORMATO = "!BBHHH"
 
 #Definindo as variaveis globais
 
-DEBUG = 1
+#Controles de debug para teste durante o desenvolvimento
+DEBUG = 1 #Debug do codigo prints que só aparecem quando DEBUG for igual a 1
+ENVIAR = 0 #para somente fins de teste local sem o socket implementado completamente uso 0 quando tiver completamente pronto e testes finais uso 1 
 
 MAGIC_NIBBLE = 0x0B #Numero magico para bytes de controle
 
@@ -91,7 +93,7 @@ def envia_pacote(sock, byte_alterado: int, seq_icmp: int) -> None:
 
     pacote = cria_icmp(payload_oculto, seq_icmp)
 
-    sock.sento(pacote, (DESTINO, 0))
+    sock.sendto(pacote, (DESTINO, 0))
 
 #Caminho do arquivo que vai ser enviado, passado direto na CLI
 #se tiver passado
@@ -142,7 +144,7 @@ with socket.socket(socket.AF_INET, socket.SOCK_RAW, socket.IPPROTO_ICMP) as s:
     if DEBUG == 1:
         print(f"nibbles tamanho: {nibbles_tamanho}")
 
-    #Envindo o primeiro byte de controle de tamanho
+    #Envindo o primeiro byte de controle de tamanho e definindo o tamanho do arquivo
     for nibble_tam in nibbles_tamanho:
         byte_ctrl = monta_byte_controle(CMD_START, SUB_TAMANHO)
         #Substitui os bits do 7 ao 4 com os gerados pela função de montar byte e os bits 3 ao 0 com o nibble do tamanho
@@ -150,5 +152,21 @@ with socket.socket(socket.AF_INET, socket.SOCK_RAW, socket.IPPROTO_ICMP) as s:
         qnt_pacotes += 1
         if DEBUG == 1:
             print(f"Byte Controle tamanho {qnt_pacotes}: {byte_ctrl}")
-        envia_pacote(s, byte_ctrl, qnt_pacotes)
+        if ENVIAR == 1:
+            envia_pacote(s, byte_ctrl, qnt_pacotes)
         time.sleep(PAUSA_ENTRE_PACOTES)
+
+    print(f"Tamanho total dos 6 nibble enviados {tamanho_arq}")
+
+    #Enviando o segundo Start e definindo a extensão do arquivo parecida com a de cima mas com a diferença da extensao e nao o tamanho 
+    byte_ext = monta_byte_controle(CMD_START, SUB_EXTENSAO)
+    #Substitui os bits do 7 ao 4 com os gerados pela função de montar byte e os bits 3 ao 0 com o codigo da extensão do arquivo
+    byte_ctrl = (byte_ctrl & 0xF0) | (codigo_extensao & 0x0F)
+    qnt_pacotes += 1
+    if DEBUG == 1:
+        print(f"Byte Controle extensão {qnt_pacotes}: {byte_ctrl}")
+    if ENVIAR == 1:
+        envia_pacote(s, byte_ctrl, qnt_pacotes)
+    time.sleep(PAUSA_ENTRE_PACOTES)
+
+    print(f"Extensao {extensao} enviada como código 0x{codigo_extensao:x}")
