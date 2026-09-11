@@ -3,14 +3,29 @@ import struct
 
 FORMATO = "!BBHHH"
 
-MAGIC_NUMBER   = "NM"
-COMANDO_INICIO = "NM Juta"
-COMANDO_FIM    = "NM Afta"
+#Definindo as variaveis globais
+
+MAGIC_NIBBLE = 0x0B #Numero magico para bytes de controle
+
+# Bit 7: pacote é de DADOS ou de CONTROLE
+CTX_DATA = 0  # Pacote de dados 
+CTX_CTRL = 1  # Pacote de controle
+
+# Bit 6: comando de stat ou stop
+CMD_START = 0 # comando inicio
+CMD_END = 1 # comando fim
+
+# Bit 5: nibble
+PART_HIGH = 0 #Nibble alto
+PART_LOW = 1 #Nibble baixo
+
+# Bit 5: Controle
+SUB_TAMANHO = 0 # Tamanho do arquivo
+SUB_EXTENSAO = 0 # Extensão do arquivo
 
 #Colocar quando eu criar os containers
-ORIGEM = "10.0.1.2"
+ORIGEM = "127.0.0.1"
 
-capacidade_por_pacote = 28 // 4
 
 mensagens_recuperadas = []
 salvando = False
