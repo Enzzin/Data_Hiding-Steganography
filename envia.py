@@ -36,17 +36,22 @@ mensagem = (
 PAUSA_ENTRE_PACOTES = 0.005
 
 #Montar pacotes de dados
-def monta_byte_dados():
-    byte_montado = 0
+def monta_byte_dados(seq_bit: int, part: int, nibble: int) -> int:
+    #A paridade não é passada pelo programa e sim calculada dependendo dos bits 3 ap 0 
+    paridade = bin(nibble).count("1") % 2
+    #O byte de dados montado passando que o CTX é 0, a seq de bits já calculada anteriormente pela outra função, qual o nibble, paridade calculada por essa função usando o nibble e realemnte o nibble a ser passado
+    byte_montado = (CTX_DATA << 7) | (seq_bit << 6) | (part << 5) | (paridade << 4) | (nibble & 0x0F)
     return byte_montado
 
 # Motar pacotes de controle
-def monta_byte_controle():
-    byte_montado = 0
+def monta_byte_controle(cmd: int, sub: int)-> int:
+    #O byte de controle montado passsando que o CTX é 1, qual o comando, qual o sub comando, passando 1 para provar q é valido e o magic number ou ext/tamanho do arquivo
+    byte_montado = (CTX_CTRL << 7) | (cmd << 6) | (sub << 5) | (1 << 4) | (MAGIC_NIBBLE & 0x0F)
     return byte_montado
 
+#Criação do pacote + Checksum, codigo original só muda o tipo de 8 para 0 pq no pdf pede para usar o Reply e nao request request = 8 e reply = 0 
 def cria_icmp(payload: bytearray, sequence: int) -> bytearray:
-    tipo = 8 
+    tipo = 0 
     codigo = 0
     checksum = 0
 
@@ -63,7 +68,6 @@ def cria_icmp(payload: bytearray, sequence: int) -> bytearray:
 
     for i in range(0, tamanho_pacote, n):
         palavra = pacote[i:i + n]
-
         checksum += int.from_bytes(palavra, byteorder="big")
 
     while checksum >> 16:
@@ -73,6 +77,17 @@ def cria_icmp(payload: bytearray, sequence: int) -> bytearray:
     cabecalho = struct.pack(FORMATO, tipo, codigo, checksum, identifier, sequence)
     pacote = cabecalho + payload
     return pacote
+
+#Coloca o byte no apayload e envia o pacote
+def envia_pacote(sock, byte_alterado: int, seq_icmp: int) -> None:
+    payload_oculto = bytearray(mensagem)
+
+    #altera só o byte 0 deixa os outros iguais o original
+    payload_oculto[0] = byte_alterado
+
+    pacote = cria_icmp(payload_oculto, seq_icmp)
+
+    sock.sento(pacote, (DESTINO, 0))
 
 with socket.socket(socket.AF_INET, socket.SOCK_RAW, socket.IPPROTO_ICMP) as s:
     s.bind((ORIGEM, 0))
