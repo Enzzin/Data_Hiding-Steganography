@@ -10,7 +10,7 @@ FORMATO = "!BBHHH"
 
 #Controles de debug para teste durante o desenvolvimento
 DEBUG = 1 #Debug do codigo prints que só aparecem quando DEBUG for igual a 1
-ENVIAR = 0 #para somente fins de teste local sem o socket implementado completamente uso 0 quando tiver completamente pronto e testes finais uso 1 
+ENVIAR = 1 #para somente fins de teste local sem o socket implementado completamente uso 0 quando tiver completamente pronto e testes finais uso 1 
 DEBUG_CHATO = 0#Debug que fica poluindo a cli, ex: envio de cada pacote sendo mostrado
 
 MAGIC_NIBBLE = 0x0B #Numero magico para bytes de controle
@@ -62,7 +62,9 @@ def cria_icmp(payload: bytearray, sequence: int) -> bytearray:
     codigo = 0
     checksum = 0
 
-    identifier = os.getpid() % 65535
+    #O sequence e o id usam % 65536 pq o campo H do ICMP so vai ate 65535, se passar disso da erro no struct entao assim ele zera e continua enviando
+    identifier = os.getpid() % 65536
+    sequence = sequence % 65536
 
     cabecalho = struct.pack(FORMATO, tipo, codigo, checksum, identifier, sequence)
 
