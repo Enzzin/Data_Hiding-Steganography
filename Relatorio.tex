@@ -1,0 +1,250 @@
+\documentclass[12pt,a4paper]{article}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[brazilian]{babel}
+\usepackage{amsmath,amssymb}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{tabularx}
+\usepackage{array}
+\usepackage[table]{xcolor}
+\usepackage{hyperref}
+\usepackage{geometry}
+\usepackage{fancyhdr}
+\usepackage{titlesec}
+\usepackage{enumitem}
+
+\geometry{
+    a4paper,
+    top=2.5cm,
+    bottom=2.5cm,
+    left=2.5cm,
+    right=2.5cm
+}
+
+\definecolor{primary}{RGB}{25, 55, 110}
+\definecolor{secondary}{RGB}{45, 95, 160}
+\definecolor{darkgray}{RGB}{60, 60, 60}
+\definecolor{lightgray}{RGB}{240, 243, 248}
+
+\newcolumntype{Y}{>{\centering\arraybackslash}X}
+
+\hypersetup{
+    colorlinks=true,
+    linkcolor=primary,
+    citecolor=primary,
+    urlcolor=secondary,
+    pdfauthor={Enzzo Machado Silvino},
+    pdftitle={Projeto Colaborativo I - Definição de Protocolo de Esteganografia},
+    pdfsubject={Data Hiding - Esteganografia sobre ICMP Echo Reply}
+}
+
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\small \textcolor{darkgray}{Data Hiding --- Projeto Colaborativo I}}
+\fancyhead[R]{\small \textcolor{darkgray}{PUCPR 2026}}
+\fancyfoot[C]{\thepage}
+\renewcommand{\headrulewidth}{0.4pt}
+\renewcommand{\footrulewidth}{0pt}
+
+\titleformat{\section}
+  {\normalfont\Large\bfseries\color{primary}}{\thesection}{1em}{}[\titlerule]
+\titleformat{\subsection}
+  {\normalfont\large\bfseries\color{secondary}}{\thesubsection}{1em}{}
+\titleformat{\subsubsection}
+  {\normalfont\normalsize\bfseries\color{darkgray}}{\thesubsubsection}{1em}{}
+
+\begin{document}
+
+\begin{titlepage}
+    \centering
+    \vspace*{1.0cm}
+    
+    {\Large \textbf{PONTIFÍCIA UNIVERSIDADE CATÓLICA DO PARANÁ}}\\[0.3cm]
+    {\large \textbf{ESCOLA POLITÉCNICA --- SEGURANÇA DA INFORMAÇÃO}}\\[0.2cm]
+    {\large Disciplina: Data Hiding}\\[3.0cm]
+
+    {\LARGE \bfseries \color{primary} Projeto Colaborativo I --- Definição de Protocolo de Esteganografia}\\[0.6cm]
+    {\large \textbf{Transmissão Furtiva de Arquivos e Imagens sobre ICMP Echo Reply}}\\[3.0cm]
+
+    \begin{flushleft}
+        \textbf{Professor:} Prof. Pedro Rocha Horchulhack\\[0.8cm]
+        \textbf{Equipe de Desenvolvimento:}\\[0.2cm]
+        \begin{itemize}[leftmargin=1.2cm, label=--]
+            \item Enzzo Machado Silvino
+            \item Mateus Antonio Daniel
+            \item João Ferreira Kruger
+        \end{itemize}
+    \end{flushleft}
+
+    \vfill
+    {\large Curitiba --- PR}\\[0.2cm]
+    {\large 2026}
+\end{titlepage}
+
+\newpage
+\tableofcontents
+\newpage
+
+\section{Introdução e Objetivo}
+
+O objetivo deste trabalho é projetar e especificar um protocolo prático de \textbf{esteganografia de rede em armazenamento}, utilizando exclusivamente mensagens de resposta \textbf{ICMP Echo Reply (Tipo 0)}.
+
+Para atingir a máxima discrição possível, tomamos uma decisão central de arquitetura: em vez de modificar vários bytes do pacote, decidimos \textbf{alterar rigorosamente 1 único byte (8 bits) do payload por pacote ICMP}.
+
+\section{Especificação do Protocolo Esteganográfico}
+
+\subsection{Como os dados trafegam na rede}
+Nosso protocolo funciona na camada de rede (Layer 3) através de \textit{Raw Sockets}. Utilizamos como base o pacote padrão do utilitário \texttt{ping} do Linux, que carrega um cabeçalho ICMP de 8 bytes e um payload de 56 bytes.
+
+A injeção esteganográfica acontece apenas no primeiro byte do payload (\texttt{payload[0]}). Os outros 55 bytes (do índice 1 ao 55) permanecem 100\% intocados, mantendo o padrão exato de um ping comum. Além disso, recalculamos o Checksum oficial da RFC 1071 sobre todo o pacote, garantindo que nenhum roteador descarte o tráfego por erro de integridade.
+
+Como nós temos apenas 8 bits por pacote e precisamos de 4 bits para transportar dados úteis, cada byte do arquivo a ser enviado é fatiado em dois nibbles:
+\begin{itemize}[leftmargin=*]
+    \item \textbf{Nibble Alto:} os 4 bits superiores do byte (bits 7 a 4).
+    \item \textbf{Nibble Baixo:} os 4 bits inferiores do byte (bits 3 a 0).
+\end{itemize}
+Ou seja, para cada byte do arquivo original, enviamos exatamente 2 pacotes ICMP pela rede.
+
+\subsection{Diagrama do Cabeçalho Esteganográfico (1 Byte)}
+
+A Tabela 1 ilustra a divisão dos 8 bits do byte modificado no payload. O segredo da nossa eficiência está no \textbf{Bit 7 (CTX)}: ele serve como uma chave mestra. Se for \texttt{0}, o pacote está carregando dados do arquivo; se for \texttt{1}, o pacote está carregando comandos de controle e metadados.
+
+\vspace{0.4cm}
+\begin{center}
+\small
+\renewcommand{\arraystretch}{1.4}
+\begin{tabularx}{\textwidth}{|*{8}{Y|}}
+\hline
+\rowcolor{lightgray}
+\textbf{Bit 7} & \textbf{Bit 6} & \textbf{Bit 5} & \textbf{Bit 4} & \textbf{Bit 3} & \textbf{Bit 2} & \textbf{Bit 1} & \textbf{Bit 0} \\
+\hline
+\multicolumn{8}{|c|}{\textbf{Modo DADOS (quando Bit 7 = 0)}} \\
+\hline
+\texttt{CTX} & \texttt{SEQ} & \texttt{PART} & \texttt{PARITY} & \multicolumn{4}{c|}{\texttt{NIBBLE DE DADOS}} \\
+\textit{(0)} & \textit{(0 ou 1)} & \textit{(Alto/Baixo)} & \textit{(Paridade)} & \multicolumn{4}{c|}{\textit{4 bits reais do arquivo}} \\
+\hline
+\multicolumn{8}{|c|}{\textbf{Modo CONTROLE (quando Bit 7 = 1)}} \\
+\hline
+\texttt{CTX} & \texttt{CMD} & \texttt{SUB} & \texttt{VALID} & \multicolumn{4}{c|}{\texttt{VALOR / MAGIC NIBBLE}} \\
+\textit{(1)} & \textit{(Start/End)} & \textit{(Tam/Ext)} & \textit{(1 fixo)} & \multicolumn{4}{c|}{\textit{Tamanho (nibble), Extensão ou 0x0B}} \\
+\hline
+\end{tabularx}
+
+\vspace{0.2cm}
+\textbf{Tabela 1:} Organização dos 8 bits do cabeçalho esteganográfico nos modos de Dados e Controle.
+\end{center}
+\vspace{0.4cm}
+
+\subsection{Significado de cada campo}
+
+\subsubsection{1. Quando o pacote é de DADOS (\texttt{Bit 7 == 0})}
+Quando o emissor está transferindo o conteúdo do arquivo, os bits funcionam assim:
+\begin{itemize}[leftmargin=*]
+    \item \textbf{Bit 7 (\texttt{CTX}):} Fixo em \texttt{0}. Avisa ao receptor que este pacote contém dados do arquivo.
+    \item \textbf{Bit 6 (\texttt{SEQ}):} Bit de sequência alternante. Ele começa em \texttt{0} e inverte (\texttt{0} $\rightarrow$ \texttt{1} $\rightarrow$ \texttt{0}) a cada byte completo transmitido. Isso permite ao receptor saber se algum pacote foi duplicado ou se perdeu a ordem.
+    \item \textbf{Bit 5 (\texttt{PART}):} Informa qual metade do byte está chegando: \texttt{0} para o Nibble Alto (bits 7 a 4) e \texttt{1} para o Nibble Baixo (bits 3 a 0).
+    \item \textbf{Bit 4 (\texttt{PARITY}):} Bit de paridade par, calculado em cima dos 4 bits de dados (\texttt{bits 3 a 0}). Se a soma dos bits 1 for ímpar, ele vale \texttt{1}; se for par, vale \texttt{0}. Se um ruído na rede alterar qualquer bit, o receptor descobre na hora e descarta o pacote corrompido.
+    \item \textbf{Bits 3 a 0 (\texttt{NIBBLE}):} Os 4 bits puros do arquivo binário ou imagem.
+\end{itemize}
+
+\subsubsection{2. Quando o pacote é de CONTROLE (\texttt{Bit 7 == 1})}
+Antes de mandar o arquivo e logo após terminar, precisamos avisar o receptor sobre tamanho, formato e fim de transmissão:
+\begin{itemize}[leftmargin=*]
+    \item \textbf{Bit 7 (\texttt{CTX}):} Fixo em \texttt{1}. Avisa ao receptor que se trata de uma mensagem de controle.
+    \item \textbf{Bit 6 (\texttt{CMD}):} Define o comando principal: \texttt{0} para \texttt{START} (início de sessão) e \texttt{1} para \texttt{END} (fim de transmissão).
+    \item \textbf{Bit 5 (\texttt{SUB}):} Quando estamos no \texttt{START}, este bit indica o tipo de metadado: \texttt{0} indica que estamos enviando o tamanho do arquivo (\texttt{SUB\_TAMANHO}) e \texttt{1} indica a extensão do arquivo (\texttt{SUB\_EXTENSAO}).
+    \item \textbf{Bit 4 (\texttt{VALID}):} Fixo sempre em \texttt{1}. Funciona como uma chave de segurança para validar que aquele pacote é realmente um comando nosso e não um ping aleatório da rede.
+    \item \textbf{Bits 3 a 0 (\texttt{VALOR / MAGIC}):} Transporta o valor do controle:
+    \begin{itemize}
+        \item No \texttt{START} de Tamanho: transporta 1 dos 6 nibbles do tamanho total.
+        \item No \texttt{START} de Extensão: transporta o código da extensão (\texttt{0x1} para JPG, \texttt{0x2} para PNG, \texttt{0x3} para PDF, etc.).
+        \item No \texttt{END}: carrega a nossa assinatura secreta (\texttt{MAGIC\_NIBBLE = 0x0B}).
+    \end{itemize}
+\end{itemize}
+
+\subsection{Ciclo de Vida da Sessão: O Passo a Passo da Comunicação}
+Para que o receptor consiga remontar o arquivo com 100\% de fidelidade, a conversa entre os dois lados segue três fases bem claras:
+
+\begin{enumerate}[leftmargin=*]
+    \item \textbf{Fase 1 --- Início e Envio de Metadados (Handshake):}
+    O emissor calcula o tamanho do arquivo em bytes. Para suportar arquivos grandes de até 16 Megabytes ($16.777.215$ bytes), nós dividimos esse número em 6 nibbles (24 bits). O emissor envia 6 pacotes de controle com o tamanho e, em seguida, envia um 7º pacote contendo o código da extensão (.png, .jpg, etc.). O receptor junta os 6 nibbles, calcula o tamanho exato esperado, define a extensão e prepara o buffer na memória.
+    
+    \item \textbf{Fase 2 --- Envio do Arquivo Byte a Byte:}
+    O emissor lê o arquivo em modo binário puro (\texttt{rb}). Para cada byte lido:
+    \begin{itemize}
+        \item Envia o Nibble Alto (\texttt{PART = 0}) com o bit de paridade calculado.
+        \item Envia o Nibble Baixo (\texttt{PART = 1}) com o bit de paridade calculado.
+        \item Inverte o bit de sequência (\texttt{seq\_bit \^{}= 1}).
+    \end{itemize}
+    O receptor confere a paridade de cada nibble, junta as duas metades (\texttt{Alto $\ll$ 4 | Baixo}) para reconstruir o byte original e anexa no buffer.
+    
+    \item \textbf{Fase 3 --- Fim da Transmissão (EOF):}
+    Ao terminar de ler o arquivo, o emissor manda um pacote \texttt{CMD\_END} contendo a assinatura mágica \texttt{0x0B}. O receptor valida essa assinatura, salva o arquivo pronto em disco e confere se a quantidade de bytes recebidos bate exatamente com o tamanho anunciado no início.
+\end{enumerate}
+
+\section{Justificativas Técnicas (Atendimento aos 5 Requisitos)}
+
+Aqui explicamos detalhadamente as razões de cada escolha de projeto, respondendo a cada um dos cinco requisitos cobrados na Seção 3.1 do regulamento.
+
+\subsection{Requisito A: Tamanho do Cabeçalho de Controle}
+\begin{itemize}[leftmargin=*]
+    \item \textbf{A nossa escolha:} O regulamento permitia um cabeçalho entre 1 e 4 bytes. Nós optamos por usar exatamente 1 byte (8 bits).
+    \item \textbf{Por que fizemos isso?} Quanto mais bytes você altera no pacote, mais fácil fica para um sistema de segurança perceber que aquele ping não é normal. Usando apenas 1 byte, alcançamos o menor impacto possível no pacote.
+    \item \textbf{Justificativa dos campos:} Cada um dos 8 bits foi aproveitado ao máximo. O bit 7 permite separar controle de dados; o bit 6 garante que os pacotes não se percam fora de ordem; o bit 5 avisa qual metade do byte está chegando; o bit 4 protege contra erros de transmissão; e os bits 3 a 0 carregam a informação útil (nibbles ou metadados).
+\end{itemize}
+
+\subsection{Requisito B: Incorporação Discreta e Furtividade}
+\begin{itemize}[leftmargin=*]
+    \item \textbf{Onde o byte foi colocado:} Nós alteramos apenas o índice 0 do payload (\texttt{payload[0]}).
+    \item \textbf{Como evitamos ser detectados em análises superficiais?}
+    \begin{enumerate}
+        \item \textbf{98,21\% do pacote original é preservado:} O payload comum de ping do Linux tem 56 bytes. Como nós alteramos apenas 1 byte e mantemos os outros 55 bytes exatamente iguais ao padrão do sistema operacional, qualquer inspeção rápida no Wireshark enxerga uma mensagem de ping perfeitamente normal.
+        \item \textbf{Recálculo obrigatório do Checksum (RFC 1071):} Se você alterar qualquer bit em um pacote de rede e não recalcular o checksum, a pilha de rede descarta o pacote imediatamente como corrompido. O nosso código recalcula matematicamente o checksum em complemento de 1, fazendo com que o pacote seja aceito por qualquer roteador da Internet.
+        \item \textbf{Sem textos suspeitos:} Não usamos strings em texto puro (como "INICIO", "FIM", "ARQUIVO"). Tudo é manipulado em nível de bits, aparentando ser apenas uma variação aleatória de dados normais.
+    \end{enumerate}
+\end{itemize}
+
+\subsection{Requisito C: Alta Quantidade de Características por Bit}
+\begin{itemize}[leftmargin=*]
+    \item \textbf{Duplo sentido em 100\% dos bits:} Para conseguir fazer tudo caber em 8 bits, nenhum bit tem função única. Dependendo do Bit 7 (\texttt{CTX}), o restante dos bits muda completamente de papel, conforme resumido na Tabela 2.
+    
+    \vspace{0.3cm}
+    \begin{center}
+    \small
+    \renewcommand{\arraystretch}{1.3}
+    \begin{tabularx}{\textwidth}{c Y Y}
+    \toprule
+    \textbf{Bit} & \textbf{Papel em Modo DADOS (\texttt{CTX = 0})} & \textbf{Papel em Modo CONTROLE (\texttt{CTX = 1})} \\
+    \midrule
+    \textbf{6} & Alternância de Sequência (\texttt{0} ou \texttt{1}) & Código do Comando (\texttt{START = 0} ou \texttt{END = 1}) \\
+    \textbf{5} & Metade do Byte (\texttt{Nibble Alto} ou \texttt{Baixo}) & Subcomando (\texttt{Tamanho = 0} ou \texttt{Extensão = 1}) \\
+    \textbf{4} & Paridade Par (Detecção de corrupção) & Validação fixa (\texttt{1}) do comando \\
+    \textbf{3 a 0} & 4 bits de dados reais do arquivo & 1 nibble do tamanho, extensão ou \texttt{0x0B} \\
+    \bottomrule
+    \end{tabularx}
+
+    \vspace{0.2cm}
+    \textbf{Tabela 2:} Como os bits mudam de papel conforme o contexto.
+    \end{center}
+    \vspace{0.3cm}
+\end{itemize}
+
+\subsection{Requisito D: Mínima Dependência de TCP/IP}
+\begin{itemize}[leftmargin=*]
+    \item \textbf{Operação direta em Raw Sockets (Camada 3):} O nosso protocolo não depende de conexões TCP, portas de comunicação ou datagramas UDP. Ele conversa diretamente com a placa de rede no nível de pacotes brutos IP/ICMP.
+    \item \textbf{Uso exclusivo de ICMP Echo Reply (Tipo 0):} Não usamos o Echo Request (Tipo 8). O protocolo foi construído para rodar em cima das respostas de ping, exatamente como solicitado nas seções 1 e 3.1.D do documento de requisitos.
+\end{itemize}
+
+\subsection{Requisito E: Como Lidar com Dados Normais e Evitar Ruído}
+Em uma rede real, outros computadores e roteadores estão enviando pings legítimos o tempo todo. Para que o nosso receptor não confunda um ping normal da rede com um pacote da nossa transmissão esteganográfica, criamos um filtro em quatro etapas:
+
+\begin{enumerate}[leftmargin=*]
+    \item \textbf{Filtro de Tipo ICMP:} O receptor só aceita pacotes com \texttt{Tipo = 0} (Echo Reply). Pings de requisição (Tipo 8) e outros avisos de rede são ignorados imediatamente.
+    \item \textbf{Checagem de Tamanho Mínimo:} O pacote precisa ter no mínimo 29 bytes (20 bytes do cabeçalho IPv4 + 8 bytes do cabeçalho ICMP + 1 byte do dado modificado).
+    \item \textbf{Validação por Assinatura Mágica e Bit Fixo:} Todo pacote de controle obrigatoriamente precisa ter o \textbf{Bit 4 igual a 1} e o comando de término exige a assinatura \texttt{MAGIC\_NIBBLE = 0x0B} (binário \texttt{1011}). Se um ping normal de rede chegar na máquina, ele quase certamente não terá essa combinação exata e será descartado.
+    \item \textbf{Validação Contínua de Paridade:} Durante a transmissão dos dados, cada nibble passa por teste matemático de paridade em tempo real. Se o pacote vier de uma fonte estranha ou sofrer corrupção, a paridade não fecha e o pacote é ignorado.
+\end{enumerate}
+
+\end{document}
