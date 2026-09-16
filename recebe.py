@@ -26,18 +26,18 @@ PART_LOW = 1 #Nibble baixo
 
 # Bit 5: Controle
 SUB_TAMANHO = 0 # Tamanho do arquivo
-SUB_EXTENSAO = 0 # Extensão do arquivo
+SUB_EXTENSAO = 1 # Extensão do arquivo
 
 #Colocar quando eu criar os containers
 ORIGEM = "127.0.0.1"
 
+#Mapa para pegar a extensao de volta atraves do codigo numerico
 MAPA_EXTENSAO = {
-    "bin": 0x0, "jpg": 0x1, "jpeg": 0x1, "png": 0x2, "pdf": 0x3,
-    "zip": 0x4, "txt": 0x5, "bmp": 0x6, "gif": 0x7, "mp3": 0x8,
-    "wav": 0x9, "mp4": 0xA, "doc": 0xB, "py":  0xC, "tar": 0xD,
+    0x0: "bin", 0x1: "jpg", 0x2: "png", 0x3: "pdf",
+    0x4: "zip", 0x5: "txt", 0x6: "bmp", 0x7: "gif",
+    0x8: "mp3", 0x9: "wav", 0xA: "mp4", 0xB: "doc",
+    0xC: "py",  0xD: "tar",
 }
-
-ORIGEM = "127.0.0.1"
 
 def decodifica_byte(byte_estego: int) -> dict:
     #Tira cada bit usando deslocamento >> e usa & 1 para pegar somente o bit certo em caso de erro de comunicação

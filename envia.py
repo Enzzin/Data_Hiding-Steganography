@@ -29,7 +29,7 @@ PART_LOW = 1 #Nibble baixo
 
 # Bit 5: Controle
 SUB_TAMANHO = 0 # Tamanho do arquivo
-SUB_EXTENSAO = 0 # Extensão do arquivo
+SUB_EXTENSAO = 1 # Extensão do arquivo
 
 #Colocar quando eu criar os containers
 ORIGEM  = "127.0.0.1"
