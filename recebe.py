@@ -32,7 +32,9 @@ SUB_EXTENSAO = 0 # Extensão do arquivo
 ORIGEM = "127.0.0.1"
 
 MAPA_EXTENSAO = {
-    0x0: "bin", 0x1: "jpg", "png": 0x2, #Colocar mais depois
+    "bin": 0x0, "jpg": 0x1, "jpeg": 0x1, "png": 0x2, "pdf": 0x3,
+    "zip": 0x4, "txt": 0x5, "bmp": 0x6, "gif": 0x7, "mp3": 0x8,
+    "wav": 0x9, "mp4": 0xA, "doc": 0xB, "py":  0xC, "tar": 0xD,
 }
 
 ORIGEM = "127.0.0.1"
